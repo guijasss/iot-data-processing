@@ -17,12 +17,12 @@ docker-compose up -d
 
 - Start event publisher service
 ```sh
-docker exec -it publisher go run ./publisher
+docker exec -it datagen go run ./datagen
 ```
 
 - Start event subscriber service
 ```sh
-docker exec -it subscriber go run ./subscriber
+docker exec -it processing go run ./processing
 ```
 
 - (Optional) Start observer service to container monitoring (CPU, memory usage and I/O)

@@ -35,31 +35,31 @@ services:
           cpus: '0.25'
           memory: 256m
 
-  publisher:
-    container_name: publisher
+  datagen:
+    container_name: datagen
     networks:
       - edge-net
     build:
-      context: .
-      dockerfile: publisher/Dockerfile
+      context: ./datagen
+      dockerfile: Dockerfile
     volumes:
-      - ./:/app
+      - ./datagen:/app/datagen
     depends_on:
       - mqtt-broker
     environment:
       - MQTT_BROKER=mqtt-
     command: ["tail", "-f", "/dev/null"]
 
-  subscriber:
-    container_name: subscriber
+  processing:
+    container_name: processing
     networks:
       - edge-net
       - shared-net
     build:
-      context: .
-      dockerfile: publisher/Dockerfile
+      context: ./processing
+      dockerfile: Dockerfile
     volumes:
-      - ./:/app
+      - ./processing:/app/
     depends_on:
       - mqtt-broker
     environment:
@@ -71,48 +71,34 @@ services:
           memory: 256m
     command: ["tail", "-f", "/dev/null"]
 
-  questdb:
-    image: questdb/questdb:9.0.2
-    container_name: questdb
-    hostname: questdb
-    networks:
-      - cloud-net
-      - shared-net
-    environment:
-      QDB_HTTP_BIND: 0.0.0.0:9000
-      QDB_PG_BIND: 0.0.0.0:8812
-      QDB_JDBC_BIND: 0.0.0.0:8812
-      QDB_MQTT_BIND: 0.0.0.0:9001
-      QDB_INIT_SQL_DIR: /docker-entrypoint-initdb.d
-    volumes:
-      - ./sql:/docker-entrypoint-initdb.d
-    ports:
-      - "9000:9000"  # UI/HTTP
-      - "8812:8812"  # SQL / JDBC
-      - "9002:9001"  # MQTT input
-      - "9009:9009"  # InfluxDB Line Protocol (ILP) TCP
-
-  metabase:
-    image: metabase/metabase:latest
-    container_name: metabase
-    networks:
-      - cloud-net
-    ports:
-      - "3000:3000"
-
-  superset:
-    image: apache/superset:latest
-    container_name: superset
-    environment:
-      SUPERSET_SECRET_KEY: supersecretkey
-      SUPERSET_LOAD_EXAMPLES: "no"
-      SUPERSET_DATABASE_URL: "sqlite:////app/superset_home/superset.db"  # Banco interno
-    networks:
-      - cloud-net
-    ports:
-      - "8088:8088"
-    volumes:
-      - superset_home:/app/superset_home
+#  questdb:
+#    image: questdb/questdb:9.0.2
+#    container_name: questdb
+#    hostname: questdb
+#    networks:
+#      - cloud-net
+#      - shared-net
+#    environment:
+#      QDB_HTTP_BIND: 0.0.0.0:9000
+#      QDB_PG_BIND: 0.0.0.0:8812
+#      QDB_JDBC_BIND: 0.0.0.0:8812
+#      QDB_MQTT_BIND: 0.0.0.0:9001
+#      QDB_INIT_SQL_DIR: /docker-entrypoint-initdb.d
+#    volumes:
+#      - ./sql:/docker-entrypoint-initdb.d
+#    ports:
+#      - "9000:9000"  # UI/HTTP
+#      - "8812:8812"  # SQL / JDBC
+#      - "9002:9001"  # MQTT input
+#      - "9009:9009"  # InfluxDB Line Protocol (ILP) TCP
+#
+#  metabase:
+#    image: metabase/metabase:latest
+#    container_name: metabase
+#    networks:
+#      - cloud-net
+#    ports:
+#      - "3000:3000"
 
 networks:
   edge-net:
@@ -121,6 +107,3 @@ networks:
     driver: bridge
   shared-net:
     external: true
-
-volumes:
-  superset_home:
