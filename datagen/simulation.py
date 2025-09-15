@@ -2,7 +2,9 @@ from numpy import exp, linspace, pi, random, sin
 from datetime import datetime, timedelta
 from time import monotonic, sleep
 
-from datagen.entities import SensorOutput, WaveMeasure
+from common.entities import SensorOutput, WaveMeasure
+from datagen.infra import MQTTClient
+from datagen.utils import event_to_json
 
 def generate_vibration_values(
         sampling_rate: int,
@@ -46,6 +48,7 @@ class SensorSimulator:
         self.temperature = 40.0  # Inicial normal
         self.fault_level = 0.0  # Nível de falha (0-1, aumenta com o tempo)
         self.fault_type = None  # Tipo de falha a simular (ex: "bearing_wear")
+        self.fault_scale = 0.2  # Multiplicador para controlar o crescimento da failure_rate
 
     def generate_output(self,
                         fault_type: str = None,
@@ -62,7 +65,7 @@ class SensorSimulator:
 
             # Aumento com tendência (não apenas linear)
             if fault_trend_type == "exponential":
-                effective_increment = fault_increment * 0.5 * exp(self.fault_level)  # Acelera com o nível atual
+                effective_increment = fault_increment * self.fault_scale * exp(self.fault_level)  # Acelera com o nível atual
             elif fault_trend_type == "quadratic":
                 effective_increment = fault_increment * (self.fault_level ** 2 + 0.1)  # Suave no início, acelera
             elif fault_trend_type == "random":
@@ -71,7 +74,7 @@ class SensorSimulator:
                 effective_increment = fault_increment
 
             self.fault_level = min(1.0, self.fault_level + effective_increment)
-            self.temperature += self.fault_level * 2
+            self.temperature += (self.fault_level * self.fault_scale) * 2
 
         # Gera vibração usando a função integrada (com parâmetros do estado)
         vib_sr = 2000  # Hz
@@ -111,10 +114,10 @@ class SensorSimulator:
         )
 
 s = SensorSimulator()
+mqtt_client = MQTTClient()
 starttime = monotonic()
 
 while True:
-    output = s.generate_output(fault_type="bearing_wear", fault_increment=0.05, fault_trend_type="exponential")
-    print(output)
-    print(1.0 - ((monotonic() - starttime) % 1.0))
+    event = event_to_json(s.generate_output(fault_type="bearing_wear", fault_increment=0.05, fault_trend_type="exponential"))
+    mqtt_client.send(event)
     sleep(1.0 - ((monotonic() - starttime) % 1.0))

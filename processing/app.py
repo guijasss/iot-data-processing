@@ -1,115 +1,72 @@
-from numpy import abs, array, max as npmax, mean, sqrt
-from scipy.fft import fft, fftfreq
+from json import dumps, loads, JSONDecodeError
+import paho.mqtt.client as mqtt
+from datetime import datetime
 
-from datagen.entities import SensorOutput, SensorSimulator
+from processing.alerts import detect_alerts
+from common.entities import SensorOutput, WaveMeasure
 
+# Configurações MQTT (de env vars no compose)
+MQTT_BROKER = "mqtt"
+MQTT_PORT = 1883
+MQTT_TOPIC = "readings"
 
-def detect_bearing_wear(output: SensorOutput) -> dict | None:
-    """Detecta desgaste de rolamento via vibração (RMS e pico em bearing_freq via FFT)."""
-    vib_values = array(output.vibration.values)
-    vib_sr = output.vibration.sampling_rate
-    rms_vib = sqrt(mean(vib_values ** 2))  # RMS para intensidade geral
+# Variável global para armazenar histórico (ex: para tendências como previous_temp)
+previous_temp = None  # Inicialize; atualize em cada mensagem
 
-    # FFT para pico na frequência de defeito
-    fft_vib = fft(vib_values)
-    freqs = fftfreq(len(vib_values), 1 / vib_sr)
-    magnitudes = abs(fft_vib)
-    base_freq = output.rpm / 60.0
-    bearing_freq = 0.5 * base_freq  # Exemplo: BPFO
-    idx = (freqs >= bearing_freq - 5) & (freqs <= bearing_freq + 5)
-    peak_bearing = npmax(magnitudes[idx]) if any(idx) else 0
+# Callback: Chamado automaticamente quando uma mensagem chega ao tópico subscrito
+def on_message(client, userdata, msg):
+    global previous_temp  # Use global se precisar de estado persistente
 
-    if rms_vib > 0.3 and peak_bearing > 10:  # Thresholds exemplo (ajuste com dados reais)
-        severity = "high" if rms_vib > 0.8 else "medium"
-        return {
-            "type": "bearing_wear",
-            "severity": severity,
-            "details": f"RMS={rms_vib:.2f}g, Pico={peak_bearing:.2f}@{bearing_freq:.1f}Hz"
-        }
-    return None
+    try:
+        # Passo 1: "Pega" os dados brutos da mensagem (payload é bytes, decode para string)
+        payload = msg.payload.decode('utf-8')
+        print(f"Mensagem recebida no tópico {msg.topic}: {payload[:100]}...")  # Log para debug (trunca se longo)
 
+        # Passo 2: Parseia o JSON para um dicionário Python
+        data = loads(
+            payload)  # Agora 'data' é um dict com os campos (ex: data['rpm'], data['vibration']['values'])
 
-def detect_overload(output: SensorOutput) -> dict | None:
-    """Detecta sobrecarga elétrica via corrente (RMS e harmônicos via FFT)."""
-    curr_values = array(output.current.values)
-    curr_sr = output.current.sampling_rate
-    rms_curr = sqrt(mean(curr_values ** 2))  # RMS para intensidade
+        # Passo 3: (Opcional) Recria o objeto SensorOutput do seu modelo para facilitar processamento
+        # Se não precisar, pule e use 'data' diretamente (ex: rms = np.sqrt(np.mean(np.array(data['vibration']['values'])**2)))
+        output = SensorOutput(
+            device_id=data["device_id"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            rpm=data["rpm"],
+            vibration=WaveMeasure(
+                sampling_rate=data["vibration"]["sampling_rate"],
+                values=data["vibration"]["values"]
+            ),
+            current=WaveMeasure(
+                sampling_rate=data["current"]["sampling_rate"],
+                values=data["current"]["values"]
+            ),
+            temperature=data["temperature"]
+        )
 
-    # FFT para harmônicos
-    fft_curr = fft(curr_values)
-    freqs_curr = fftfreq(len(curr_values), 1 / curr_sr)
-    magnitudes_curr = abs(fft_curr)
-    fundamental_freq = 50  # Rede (ajuste para 60Hz se necessário)
-    idx_fund = (freqs_curr >= fundamental_freq - 5) & (freqs_curr <= fundamental_freq + 5)
-    peak_fund = max(magnitudes_curr[idx_fund]) if any(idx_fund) else 0
-    harmonic_freq = 150  # 3ª harmônica
-    idx_harm = (freqs_curr >= harmonic_freq - 5) & (freqs_curr <= harmonic_freq + 5)
-    peak_harm = max(magnitudes_curr[idx_harm]) if any(idx_harm) else 0
+        # Passo 4: Processa os dados (ex: detecta alertas)
+        alerts = detect_alerts(output, previous_temp=previous_temp)  # Use previous_temp para tendências
 
-    if rms_curr > 6 and (peak_harm / peak_fund > 0.1 if peak_fund > 0 else False):
-        severity = "high" if rms_curr > 8 else "medium"
-        return {
-            "type": "overload",
-            "severity": severity,
-            "details": f"RMS={rms_curr:.2f}A, Harmônico={(peak_harm / peak_fund) * 100:.1f}%"
-        }
-    return None
-
-
-def detect_overheating(output: SensorOutput, previous_temp: float = None) -> dict | None:
-    """Detecta superaquecimento via temperatura (threshold e tendência)."""
-    temp = output.temperature
-    alert = None
-
-    # Threshold simples
-    if temp > 70:
-        severity = "high" if temp > 80 else "medium"
-        alert = {
-            "type": "overheating",
-            "severity": severity,
-            "details": f"Temperatura={temp:.1f}°C"
-        }
-
-    # Tendência (opcional, requer temp anterior)
-    if previous_temp is not None and (temp - previous_temp) > 5:
-        trend_alert = {
-            "type": "overheating_trend",
-            "severity": "warning",
-            "details": f"Aumento={temp - previous_temp:.1f}°C"
-        }
-        # Mescla se já houver alerta
-        if alert:
-            alert["details"] += f"; {trend_alert['details']}"
-            alert["severity"] = max(alert["severity"], trend_alert["severity"],
-                                    key=lambda s: ["warning", "medium", "high"].index(s))
+        # Passo 5: Faz algo com os resultados (ex: log, envie alertas de volta via MQTT, armazene em DB)
+        if alerts:
+            print(f"Alertas detectados: {alerts}")
+            # Exemplo: Publique alertas em outro tópico (veja extensão abaixo)
+            client.publish("alerts/processed", dumps(alerts))  # Envie de volta
         else:
-            alert = trend_alert
+            print("Nenhum alerta detectado.")
 
-    return alert
+        # Atualiza estado (ex: para próxima mensagem)
+        previous_temp = output["temperature"]  # Armazena para tendência no próximo dado
+
+    except JSONDecodeError as e:
+        print(f"Erro ao parsear JSON: {e}")
+    except Exception as e:
+        print(f"Erro ao processar dados: {e}")
 
 
-# Função wrapper opcional para detectar todos de uma vez
-def detect_alerts(output: SensorOutput, previous_temp: float = None) -> list[dict]:
-    alerts = []
-    bearing_alert = detect_bearing_wear(output)
-    if bearing_alert:
-        alerts.append(bearing_alert)
-
-    overload_alert = detect_overload(output)
-    if overload_alert:
-        alerts.append(overload_alert)
-
-    overheating_alert = detect_overheating(output, previous_temp)
-    if overheating_alert:
-        alerts.append(overheating_alert)
-
-    return alerts
-
-simulator = SensorSimulator()
-previous_temp = 40.0  # Inicial
-for i in range(50):
-    output = simulator.generate_output(fault_type="bearing_wear", fault_increment=0.05, fault_trend_type="exponential")
-    alerts = detect_alerts(output, previous_temp)
-    previous_temp = output.temperature  # Atualiza para próxima
-    if alerts:
-        print(f"Medição {i+1}: Alertas detectados: {alerts}")
+# Inicializa e configura o cliente MQTT
+client = mqtt.Client()
+client.on_message = on_message  # Associa o callback
+client.connect(MQTT_BROKER, MQTT_PORT, 60)  # Conecta ao broker
+client.subscribe(MQTT_TOPIC)  # Subscreve ao tópico onde datagen publica
+print(f"Processing started: Subscribed to {MQTT_TOPIC} on {MQTT_BROKER}:{MQTT_PORT}")
+client.loop_forever()  # Mantém o subscriber rodando indefinidamente

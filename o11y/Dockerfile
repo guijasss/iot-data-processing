@@ -6,4 +6,3 @@ RUN pip install flask docker tabulate
 
 COPY . .
 
-CMD ["python", "app.py"]

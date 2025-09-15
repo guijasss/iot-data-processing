@@ -2,19 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN mkdir "datagen"
+# Copia requirements primeiro
+COPY datagen/requirements.txt ./datagen/
 
-# Copia requirements.txt primeiro (boa prática para cache de layers)
-COPY requirements.txt ./datagen
-
-# Instala dependências do requirements.txt
+# Instala dependências
 RUN pip install --no-cache-dir -r ./datagen/requirements.txt
 
-# Copia o resto do código
-COPY . ./datagen
+# Copia código de datagen e common
+COPY datagen ./datagen
+COPY common ./common
 
-# Adiciona /app ao PYTHONPATH para resolver imports locais
+# Adiciona /app ao PYTHONPATH
 ENV PYTHONPATH=/app
 
-# CMD para rodar o app principal
-# CMD ["python", "app.py"]
+# CMD para rodar app
+# CMD ["python", "datagen/app.py"]

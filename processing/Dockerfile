@@ -2,19 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN mkdir "processing"
+# Copia requirements primeiro
+COPY processing/requirements.txt ./processing/
 
-# Copia requirements.txt primeiro (boa prática para cache de layers)
-COPY requirements.txt ./processing
-
-# Instala dependências do requirements.txt
+# Instala dependências
 RUN pip install --no-cache-dir -r ./processing/requirements.txt
 
-# Copia o resto do código
-COPY . ./processing
+# Copia código de processing e common
+COPY processing ./processing
+COPY common ./common
 
-# Adiciona /app ao PYTHONPATH para resolver imports locais
+# Adiciona /app ao PYTHONPATH
 ENV PYTHONPATH=/app
 
-# CMD para rodar o app principal
-# CMD ["python", "app.py"]
+# CMD para rodar app
+# CMD ["python", "processing/app.py"]
