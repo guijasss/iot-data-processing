@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 
 from processing.alerts import detect_alerts
-from common.entities import SensorOutput, WaveMeasure
+from common.entities import SensorOutput, WaveMeasure, Engine
 
 # Configurações MQTT (de env vars no compose)
 MQTT_BROKER = "mqtt"
@@ -16,6 +16,13 @@ previous_temp = None  # Inicialize; atualize em cada mensagem
 # Callback: Chamado automaticamente quando uma mensagem chega ao tópico subscrito
 def on_message(client, userdata, msg):
     global previous_temp  # Use global se precisar de estado persistente
+
+    engine = Engine(
+        engine_id="motor-001",
+        rated_speed=1800,  # Nominal RPM
+        rated_current=5.0,  # Nominal A
+        max_temperature=80.0  # Max °C antes de falha grave
+    )
 
     try:
         # Passo 1: "Pega" os dados brutos da mensagem (payload é bytes, decode para string)
@@ -44,7 +51,7 @@ def on_message(client, userdata, msg):
         )
 
         # Passo 4: Processa os dados (ex: detecta alertas)
-        alerts = detect_alerts(output, previous_temp=previous_temp)  # Use previous_temp para tendências
+        alerts = detect_alerts(output, engine, previous_temp=previous_temp)  # Use previous_temp para tendências
 
         # Passo 5: Faz algo com os resultados (ex: log, envie alertas de volta via MQTT, armazene em DB)
         if alerts:

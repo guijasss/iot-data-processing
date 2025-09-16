@@ -1,6 +1,5 @@
 import matplotlib
 
-matplotlib.use('Agg')  # Backend non-interactive para Docker (salva sem mostrar)
 import matplotlib.pyplot as plt
 import numpy as np
 import os

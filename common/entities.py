@@ -1,4 +1,5 @@
 from datetime import datetime
+from dataclasses import dataclass
 from typing import List, TypedDict
 
 
@@ -13,3 +14,10 @@ class SensorOutput(TypedDict):
     vibration: WaveMeasure
     current: WaveMeasure
     temperature: float
+
+@dataclass
+class Engine:
+    engine_id: str
+    rated_speed: int
+    rated_current: float
+    max_temperature: float
