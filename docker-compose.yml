@@ -46,6 +46,7 @@ services:
       dockerfile: ./datagen/Dockerfile
     volumes:
       - ./datagen:/app/datagen
+      - ./common:/app/common
     depends_on:
       - mqtt-broker
     environment:
@@ -62,6 +63,7 @@ services:
       dockerfile: ./processing/Dockerfile
     volumes:
       - ./processing:/app/processing
+      - ./common:/app/common
     depends_on:
       - mqtt-broker
     environment:

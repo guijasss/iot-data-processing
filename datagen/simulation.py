@@ -4,7 +4,7 @@ from time import monotonic, sleep
 
 from common.entities import SensorOutput, WaveMeasure
 from datagen.infra import MQTTClient
-from datagen.utils import event_to_json
+from common.utils import event_to_json
 
 def generate_vibration_values(
         sampling_rate: int,
@@ -123,6 +123,6 @@ mqtt_client = MQTTClient()
 starttime = monotonic()
 while True:
     event = event_to_json(
-        s.generate_output(fault_type="bearing_wear", fault_increment=0.05, fault_trend_type="exponential"))
+        s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential"))
     mqtt_client.send(event)
     sleep(1.0 - ((monotonic() - starttime) % 1.0))
