@@ -1,4 +1,3 @@
-from collections import defaultdict
 from json import loads
 from datetime import datetime
 from time import time
@@ -18,7 +17,7 @@ class MotorMonitor:
         self.MQTT_BROKER = "mqtt"
         self.MQTT_PORT = 1883
         self.MQTT_TOPIC = "readings"
-        self.MQTT_TOPIC_OUT = "aggregations"
+        self.MQTT_TOPIC_OUT = "sensors/aggregations"
         self.AGGREGATION_INTERVAL = 10
         self.buffer = []
         self.previous_temp = None
@@ -61,7 +60,9 @@ class MotorMonitor:
         alerts = detect_alerts(output, self.engine, previous_temp=self.previous_temp)
         if alerts:
             print(f"Alertas detectados: {alerts}")
-            client.publish("alerts/processed", event_to_json(alerts))
+            for alert in alerts:
+                alert.pop("details")
+                client.publish("sensors/alerts", event_to_json(alert))
         else:
             print("Nenhum alerta detectado.")
         self.previous_temp = output["temperature"]

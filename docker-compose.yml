@@ -75,34 +75,38 @@ services:
           memory: 256m
     command: ["tail", "-f", "/dev/null"]
 
-#  questdb:
-#    image: questdb/questdb:9.0.2
-#    container_name: questdb
-#    hostname: questdb
-#    networks:
-#      - cloud-net
-#      - shared-net
-#    environment:
-#      QDB_HTTP_BIND: 0.0.0.0:9000
-#      QDB_PG_BIND: 0.0.0.0:8812
-#      QDB_JDBC_BIND: 0.0.0.0:8812
-#      QDB_MQTT_BIND: 0.0.0.0:9001
-#      QDB_INIT_SQL_DIR: /docker-entrypoint-initdb.d
-#    volumes:
-#      - ./sql:/docker-entrypoint-initdb.d
-#    ports:
-#      - "9000:9000"  # UI/HTTP
-#      - "8812:8812"  # SQL / JDBC
-#      - "9002:9001"  # MQTT input
-#      - "9009:9009"  # InfluxDB Line Protocol (ILP) TCP
-#
-#  metabase:
-#    image: metabase/metabase:latest
-#    container_name: metabase
-#    networks:
-#      - cloud-net
-#    ports:
-#      - "3000:3000"
+  influxdb:
+    image: influxdb:2.7  # Versão estável
+    container_name: influxdb
+    hostname: influx
+    ports:
+      - "8086:8086"  # Porta padrão (mude se quiser 8181)
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=yourpassword
+      - DOCKER_INFLUXDB_INIT_ORG=yourorg
+      - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
+    networks:
+      - edge-net
+      - shared-net
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  telegraf:
+    image: telegraf:1.30
+    container_name: telegraf
+    hostname: telegraf
+    restart: unless-stopped
+    environment:
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+    volumes:
+      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
+    networks:
+      - edge-net
+      - shared-net
 
 networks:
   edge-net:
@@ -111,3 +115,6 @@ networks:
     driver: bridge
   shared-net:
     external: true
+
+volumes:
+  influxdb_data:

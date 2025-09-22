@@ -1,3 +1,5 @@
 numpy==2.3.3
 scipy==1.16.2
 paho-mqtt==1.6.1
+dotenv==0.9.9
+influx-client==1.9.0
