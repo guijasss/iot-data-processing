@@ -1,13 +1,13 @@
 from json import loads
-from datetime import datetime
 from time import time
+from typing import cast, List
 
 import numpy as np
 import paho.mqtt.client as mqtt
 
 from processing.alerts import detect_alerts
 from common.utils import event_to_json
-from common.entities import SensorOutput, WaveMeasure, Engine
+from common.entities import SensorOutput, Engine, SensorOutputAggregation
 
 
 class MotorMonitor:
@@ -31,30 +31,13 @@ class MotorMonitor:
         print(f"Processing started: Subscribed to {self.MQTT_TOPIC} on {self.MQTT_BROKER}:{self.MQTT_PORT}")
         return client
 
-    def on_message_callback(self, client, userdata, msg):
-        payload = msg.payload.decode('utf-8')
+    def on_message_callback(self, client: mqtt.Client, _, msg: mqtt.MQTTMessage):
+        payload = cast(bytes, msg.payload).decode('utf-8')
         print(f"Mensagem recebida no tópico {msg.topic}: {payload[:100]}...")  # Log para debug (trunca se longo)
-        data = loads(payload)
-        output = self.process_message(data)
+        output = loads(payload)
         self.handle_alerts(client, output)
         self.buffer.append(output)
         self.check_aggregation_threshold(client)
-
-    def process_message(self, data):
-        return SensorOutput(
-            device_id=data["device_id"],
-            timestamp=datetime.fromisoformat(data["timestamp"]),
-            rpm=data["rpm"],
-            vibration=WaveMeasure(
-                sampling_rate=data["vibration"]["sampling_rate"],
-                values=data["vibration"]["values"]
-            ),
-            current=WaveMeasure(
-                sampling_rate=data["current"]["sampling_rate"],
-                values=data["current"]["values"]
-            ),
-            temperature=data["temperature"]
-        )
 
     def handle_alerts(self, client, output: SensorOutput):
         alerts = detect_alerts(output, self.engine, previous_temp=self.previous_temp)
@@ -67,7 +50,7 @@ class MotorMonitor:
             print("Nenhum alerta detectado.")
         self.previous_temp = output["temperature"]
 
-    def check_aggregation_threshold(self, client):
+    def check_aggregation_threshold(self, client: mqtt.Client):
         if time() - self.last_aggregation_time >= self.AGGREGATION_INTERVAL:
             aggregated = self.aggregate_data(self.buffer)
             client.publish(self.MQTT_TOPIC_OUT, event_to_json(aggregated))
@@ -75,10 +58,8 @@ class MotorMonitor:
             self.buffer.clear()
             self.last_aggregation_time = time()
 
-    def aggregate_data(self, buffer):
-        if not buffer:
-            return {"error": "Nenhum dado para agregar"}
-
+    @staticmethod
+    def aggregate_data(buffer: List[SensorOutput]) -> SensorOutputAggregation:
         # Calcula aggregations
         aggregated_data = {
             "device_id": buffer[0]["device_id"],
@@ -132,7 +113,7 @@ class MotorMonitor:
         aggregated_data["current"]["max_rms"] = np.max(curr_rms_values)
         aggregated_data["current"]["avg_harmonic_peak"] = np.mean(harmonic_peaks)
 
-        return aggregated_data
+        return cast(SensorOutputAggregation, aggregated_data)
 
 
 # Uso do sistema
