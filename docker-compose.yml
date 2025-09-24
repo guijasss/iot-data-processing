@@ -20,10 +20,11 @@ services:
   observer:
     build:
       context: .
-      dockerfile: o11y/Dockerfile
+      dockerfile: ./o11y/Dockerfile
     container_name: observer
     volumes:
-      - ./o11y/:/app
+      - ./o11y:/app/o11y
+      - ./db:/app/db
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mqtt-broker
@@ -35,7 +36,7 @@ services:
         limits:
           cpus: '0.25'
           memory: 256m
-    command: ["python", "app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   datagen:
     container_name: datagen
@@ -43,7 +44,7 @@ services:
       - edge-net
     build:
       context: .
-      dockerfile: ./datagen/Dockerfile
+      dockerfile: datagen/Dockerfile
     volumes:
       - ./datagen:/app/datagen
       - ./common:/app/common
@@ -60,7 +61,7 @@ services:
       - shared-net
     build:
       context: .
-      dockerfile: ./processing/Dockerfile
+      dockerfile: processing/Dockerfile
     volumes:
       - ./processing:/app/processing
       - ./common:/app/common

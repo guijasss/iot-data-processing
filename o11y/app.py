@@ -1,15 +1,18 @@
-import docker
-import time
+from docker import from_env
+from time import sleep, strftime
 from tabulate import tabulate
 
+from o11y.database import init_db, insert_metrics
+
 # Inicializa cliente Docker
-client = docker.from_env()
+client = from_env()
 
 DEFAULT_PRECISION = 2
 
 # Função para coletar métricas de todos os containers
 def get_container_metrics():
     containers = client.containers.list()
+
     metrics_list = []
 
     for c in containers:
@@ -55,26 +58,31 @@ def get_container_metrics():
 
     return metrics_list
 
-# Função para exibir tabela no terminal
 def show_metrics():
-    while True:
-        metrics = [
-            {
-                "Container": m.get("container"),
-                "CPU %": f'{m.get("cpu_percent")}%',
-                "MEM USAGE / LIMIT": f'{m.get("mem_usage")} MiB / {m.get("mem_limit"):.0f}MiB',
-                "MEM %": f"{m.get('mem_percent')}%",
-                "NET I/O": f"{m.get('rx_bytes')}MB / {m.get('tx_bytes')}MB",
-                "BLOCK I/O": f"{m.get('io_read')}MB / {m.get('io_write')}MB",
-                "Restarts": m.get("restarts")
-            } for m in
-            get_container_metrics()
-        ]
+    conn = init_db()
+    try:
+        while True:
+            metrics_list = get_container_metrics()
+            metrics = [
+                {
+                    "Container": m.get("container"),
+                    "CPU %": f'{m.get("cpu_percent")}%',
+                    "MEM USAGE / LIMIT": f'{m.get("mem_usage")} MiB / {m.get("mem_limit"):.0f}MiB',
+                    "MEM %": f"{m.get('mem_percent')}%",
+                    "NET I/O": f"{m.get('rx_bytes')}MB / {m.get('tx_bytes')}MB",
+                    "BLOCK I/O": f"{m.get('io_read')}MB / {m.get('io_write')}MB",
+                    "Restarts": m.get("restarts")
+                } for m in metrics_list
+            ]
+            insert_metrics(conn, metrics_list)
 
-        print("\033c", end="")  # limpa terminal
-        print(f"📊 Métricas dos Containers - Atualizado em {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(tabulate(metrics, headers="keys", tablefmt="grid"))
-        time.sleep(5)
+            print("\033c", end="")
+            print(f"📊 Métricas dos Containers - Atualizado em {strftime('%Y-%m-%d %H:%M:%S')}")
+            print(tabulate(metrics, headers="keys", tablefmt="grid"))
+            sleep(5)
+    except KeyboardInterrupt:
+        conn.close()
+
 
 if __name__ == "__main__":
     show_metrics()
