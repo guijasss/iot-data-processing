@@ -26,6 +26,9 @@ def detect_bearing_wear(output: SensorOutput, engine: Engine) -> dict | None:
     if rms_vib > rms_threshold and peak_bearing > peak_threshold:
         severity = "high" if rms_vib > rms_threshold * 1.5 else "medium"
         return {
+            "event_id": output["event_id"],
+            "sensor_id": output["sensor_id"],
+            "timestamp": output["timestamp"],
             "type": "bearing_wear",
             "severity": severity,
             "details": f"RMS={rms_vib:.2f}g (threshold={rms_threshold:.2f}), Pico={peak_bearing:.2f}@{bearing_freq:.1f}Hz (threshold={peak_threshold:.2f})"
@@ -58,6 +61,9 @@ def detect_overload(output: SensorOutput, engine: Engine) -> dict | None:
     if rms_curr > rms_medium_threshold and (peak_harm / peak_fund > harmonic_threshold if peak_fund > 0 else False):
         severity = "high" if rms_curr > rms_high_threshold else "medium"
         return {
+            "event_id": output["event_id"],
+            "sensor_id": output["sensor_id"],
+            "timestamp": output["timestamp"],
             "type": "overload",
             "severity": severity,
             "details": f"RMS={rms_curr:.2f}A (threshold medium={rms_medium_threshold:.2f}, high={rms_high_threshold:.2f}), Harmônico={(peak_harm / peak_fund) * 100:.1f}%"
@@ -70,14 +76,20 @@ def detect_overheating(output: SensorOutput, engine: Engine, previous_temp: floa
     temp = output["temperature"]
     alert = None
 
-    # Thresholds dinâmicos: Warning em 80% de max_temperature ou +5°C de "nominal" (ajuste conforme exemplo)
-    nominal_temp = 50.0  # Assumido do exemplo; poderia vir da Engine se adicionar campo
+    nominal_temp = 40.0  # Assumido do exemplo; poderia vir da Engine se adicionar campo
     warning_threshold = max(nominal_temp + 5, engine.max_temperature * 0.8)  # Ex: max(55, 0.8*max_temp)
     grave_threshold = engine.max_temperature  # Grave no max_temperature
+
+    print(temp)
+    print(warning_threshold)
+    print(engine.max_temperature)
 
     if temp > warning_threshold:
         severity = "high" if temp > grave_threshold else "medium"
         alert = {
+            "event_id": output["event_id"],
+            "sensor_id": output["sensor_id"],
+            "timestamp": output["timestamp"],
             "type": "overheating",
             "severity": severity,
             "details": f"Temperatura={temp:.1f}°C (warning threshold={warning_threshold:.1f}, grave={grave_threshold:.1f})"
@@ -86,6 +98,9 @@ def detect_overheating(output: SensorOutput, engine: Engine, previous_temp: floa
     # Tendência (mantida como no exemplo: +5°C para warning)
     if previous_temp is not None and (temp - previous_temp) > 5:
         trend_alert = {
+            "event_id": output["event_id"],
+            "sensor_id": output["sensor_id"],
+            "timestamp": output["timestamp"],
             "type": "overheating_trend",
             "severity": "warning",
             "details": f"Aumento={temp - previous_temp:.1f}°C"

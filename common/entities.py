@@ -8,7 +8,8 @@ class WaveMeasure(TypedDict):
     values: List[float]
 
 class SensorOutput(TypedDict):
-    device_id: str
+    event_id: str
+    sensor_id: str
     timestamp: datetime
     rpm: int
     vibration: WaveMeasure
@@ -16,7 +17,7 @@ class SensorOutput(TypedDict):
     temperature: float
 
 class SensorOutputAggregation(TypedDict):
-    device_id: str
+    sensor_id: str
     period_start: str
     period_end: str
     event_count: int

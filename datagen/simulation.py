@@ -1,8 +1,10 @@
 from numpy import exp, linspace, pi, random, sin, sqrt
-from datetime import datetime, timedelta
+from datetime import datetime
 from time import monotonic, sleep
+from uuid import uuid4
 
 from common.entities import SensorOutput, WaveMeasure
+from common.infra import PostgreSQLHandler
 from datagen.infra import MQTTClient
 from common.utils import event_to_json
 
@@ -42,14 +44,19 @@ def generate_vibration_values(
 
 
 class SensorSimulator:
-    def __init__(self, device_id: str = "edge-001", initial_rpm: int = 1800):
-        self.device_id = device_id
+    def __init__(self, sensor_id: str = "edge-001", initial_rpm: int = 1800):
+        self.sensor_id = sensor_id
         self.current_timestamp = datetime.now()
         self.current_rpm = initial_rpm
         self.temperature = 40.0  # Inicial normal
         self.fault_level = 0.0  # Nível de falha (0-1, aumenta com o tempo)
         self.fault_type = None  # Tipo de falha a simular (ex: "bearing_wear")
         self.fault_scale = 0.1  # Reduzido de 0.2 para escalonamento mais lento geral
+
+        # limpa as tabelas no início de cada processamento
+        sqlite_client = PostgreSQLHandler()
+        sqlite_client.init_db()
+        sqlite_client.clean_tables()
 
     def generate_output(self,
                         fault_type: str = None,
@@ -58,7 +65,7 @@ class SensorSimulator:
                         noise_level: float = 0.1) -> SensorOutput:
         duration = 1.0
         # Atualiza estado para dependência temporal
-        self.current_timestamp += timedelta(seconds=10)  # Simula intervalo entre medições
+        self.current_timestamp = datetime.now() #timedelta(seconds=10)  # Simula intervalo entre medições
         self.current_rpm = random.randint(max(1000, self.current_rpm - 50),
                                           min(3000, self.current_rpm + 50))  # Varia ligeiramente
         if fault_type:
@@ -108,7 +115,8 @@ class SensorSimulator:
         temperature = round(self.temperature + random.uniform(-0.5, 0.5), 1)  # Reduzido range de ruído
 
         return SensorOutput(
-            device_id=self.device_id,
+            event_id=str(uuid4()),
+            sensor_id=self.sensor_id,
             timestamp=self.current_timestamp,
             rpm=self.current_rpm,
             vibration=vibration,
@@ -120,9 +128,18 @@ class SensorSimulator:
 # O loop while True permanece igual ao seu (gera, converte para JSON, envia via MQTT, sleep 1s)
 s = SensorSimulator()
 mqtt_client = MQTTClient()
+sql_client = PostgreSQLHandler()
+
 starttime = monotonic()
 while True:
-    event = event_to_json(
-        s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential"))
-    mqtt_client.send(event)
+    event = s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential")
+    mqtt_client.send(event_to_json(event))
+
+    sql_client.insert_one("events", {
+        "event_id": event["event_id"],
+        "sensor_id": event["sensor_id"],
+        "timestamp": event["timestamp"],
+        "payload": f'{{"temperature": {event["temperature"]}}}'
+    })
+
     sleep(1.0 - ((monotonic() - starttime) % 1.0))

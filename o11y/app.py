@@ -2,7 +2,7 @@ from docker import from_env
 from time import sleep, strftime
 from tabulate import tabulate
 
-from o11y.database import init_db, insert_metrics
+from common.infra import SQLiteHandler
 
 # Inicializa cliente Docker
 client = from_env()
@@ -58,31 +58,31 @@ def get_container_metrics():
 
     return metrics_list
 
-def show_metrics():
-    conn = init_db()
+#TODO: tipar o retorno das métricas dos containers
+def format_display_metrics(metrics: list) -> list:
+    return [
+        {
+            "Container": m.get("container"),
+            "CPU %": f'{m.get("cpu_percent")}%',
+            "MEM USAGE / LIMIT": f'{m.get("mem_usage")} MiB / {m.get("mem_limit"):.0f}MiB',
+            "MEM %": f"{m.get('mem_percent')}%",
+            "NET I/O": f"{m.get('rx_bytes')}MB / {m.get('tx_bytes')}MB",
+            "BLOCK I/O": f"{m.get('io_read')}MB / {m.get('io_write')}MB",
+            "Restarts": m.get("restarts")
+        } for m in metrics
+    ]
+
+if __name__ == "__main__":
+    sqlite_handler = SQLiteHandler()
+
     try:
         while True:
-            metrics_list = get_container_metrics()
-            metrics = [
-                {
-                    "Container": m.get("container"),
-                    "CPU %": f'{m.get("cpu_percent")}%',
-                    "MEM USAGE / LIMIT": f'{m.get("mem_usage")} MiB / {m.get("mem_limit"):.0f}MiB',
-                    "MEM %": f"{m.get('mem_percent')}%",
-                    "NET I/O": f"{m.get('rx_bytes')}MB / {m.get('tx_bytes')}MB",
-                    "BLOCK I/O": f"{m.get('io_read')}MB / {m.get('io_write')}MB",
-                    "Restarts": m.get("restarts")
-                } for m in metrics_list
-            ]
-            insert_metrics(conn, metrics_list)
+            metrics = get_container_metrics()
+            sqlite_handler.insert_all(metrics)
 
             print("\033c", end="")
             print(f"📊 Métricas dos Containers - Atualizado em {strftime('%Y-%m-%d %H:%M:%S')}")
-            print(tabulate(metrics, headers="keys", tablefmt="grid"))
+            print(tabulate(format_display_metrics(metrics), headers="keys", tablefmt="grid"))
             sleep(5)
     except KeyboardInterrupt:
-        conn.close()
-
-
-if __name__ == "__main__":
-    show_metrics()
+        sqlite_handler.close_connection()

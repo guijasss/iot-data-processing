@@ -24,7 +24,6 @@ services:
     container_name: observer
     volumes:
       - ./o11y:/app/o11y
-      - ./db:/app/db
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - mqtt-broker
@@ -105,6 +104,28 @@ services:
       - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     depends_on:
       - influxdb
+    networks:
+      - edge-net
+      - shared-net
+
+  metrics-db:
+    image: postgres:16-alpine
+    container_name: metrics-db
+    hostname: metrics_db
+    environment:
+      POSTGRES_USER: user_tcc
+      POSTGRES_PASSWORD: password_tcc
+      POSTGRES_DB: metrics
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user_tcc -d metrics" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - edge-net
       - shared-net

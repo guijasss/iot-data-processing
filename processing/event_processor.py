@@ -7,8 +7,6 @@ from processing.alerts import detect_alerts
 
 
 class EventProcessor:
-    """Processa eventos de sensores e gera agregações"""
-
     def __init__(self, engine: Engine, aggregation_interval: int = 10):
         self.engine = engine
         self.aggregation_interval = aggregation_interval
@@ -24,7 +22,6 @@ class EventProcessor:
             tuple: (lista de alertas, agregação ou None)
         """
         output = loads(payload)
-        print(f"Processing event: {payload[:100]}...")
 
         # Detecta alertas
         alerts = self._detect_alerts(output)
@@ -44,14 +41,11 @@ class EventProcessor:
     def _detect_alerts(self, output: SensorOutput) -> List[dict]:
         """Detecta alertas baseados no output do sensor"""
         alerts = detect_alerts(output, self.engine, previous_temp=self.previous_temp)
-
-        if alerts:
-            print(f"Alerts detected: {alerts}")
-            # Remove detalhes dos alertas para publicação
-            for alert in alerts:
-                alert.pop("details", None)
-        else:
-            print("No alerts detected.")
+        #
+        # if alerts:
+        #     print(f"Alerts detected: {alerts}")
+        # else:
+        #     print("No alerts detected.")
 
         self.previous_temp = output["temperature"]
         return alerts
@@ -74,7 +68,7 @@ class EventProcessor:
         """Calcula as agregações dos dados no buffer"""
         # Dados básicos
         aggregated_data = {
-            "device_id": buffer[0]["device_id"],
+            "sensor_id": buffer[0]["sensor_id"],
             "period_start": min(d["timestamp"] for d in buffer),
             "period_end": max(d["timestamp"] for d in buffer),
             "event_count": len(buffer),
