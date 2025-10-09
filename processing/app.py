@@ -5,7 +5,7 @@ from datetime import datetime
 from common.entities import Engine
 from common.utils import event_to_json
 from common.infra import MQTTHandler, PostgreSQLHandler
-from event_processor import EventProcessor
+from processing.event_processor import EventProcessor
 
 
 class MotorMonitor:

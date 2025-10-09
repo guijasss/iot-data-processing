@@ -41,11 +41,6 @@ class EventProcessor:
     def _detect_alerts(self, output: SensorOutput) -> List[dict]:
         """Detecta alertas baseados no output do sensor"""
         alerts = detect_alerts(output, self.engine, previous_temp=self.previous_temp)
-        #
-        # if alerts:
-        #     print(f"Alerts detected: {alerts}")
-        # else:
-        #     print("No alerts detected.")
 
         self.previous_temp = output["temperature"]
         return alerts

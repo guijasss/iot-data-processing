@@ -24,3 +24,30 @@ ON e.event_id = a.event_id
 WHERE 1=1
 AND e.event_id = 'f1acddd4-e9b7-452d-8446-66571a6bfb17'
 AND a."type" = 'overheating'
+
+-- simulação contínua de alertas
+with base_alerts as (
+	select
+		event_id,
+		timestamp,
+		CONCAT(EXTRACT(HOUR FROM "timestamp"), EXTRACT(MINUTE FROM "timestamp")) as simulation_id
+	from alerts
+	where type = 'overheating'
+),
+
+ranked_alerts as (
+	select
+		*,
+		rank() over (partition by simulation_id order by timestamp asc) as rank
+	from base_alerts
+)
+
+select
+	ra.event_id,
+	ra."timestamp" as alert_timestamp,
+	a."timestamp" as event_timestamp,
+	ra."timestamp" - a."timestamp" as difference
+from ranked_alerts ra
+inner join events a
+on ra.event_id = a.event_id
+where rank = 1

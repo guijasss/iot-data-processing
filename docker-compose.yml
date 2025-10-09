@@ -1,95 +1,40 @@
+x-common-resources: &common-resources
+  deploy:
+    resources:
+      limits:
+        cpus: '0.25'
+        memory: 256m
+
+x-common-networks: &common-networks
+  networks:
+    - edge-net
+    - shared-net
+
 services:
   mqtt-broker:
     image: eclipse-mosquitto:2.0
     container_name: mqtt-broker
     hostname: mqtt
-    networks:
-      - edge-net
-      - shared-net
     ports:
       - "1883:1883"
       - "9001:9001"
     volumes:
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256m
-
-  observer:
-    build:
-      context: .
-      dockerfile: ./o11y/Dockerfile
-    container_name: observer
-    volumes:
-      - ./o11y:/app/o11y
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - mqtt-broker
-    networks:
-      - edge-net
-      - shared-net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256m
-    command: ["tail", "-f", "/dev/null"]
-
-  datagen:
-    container_name: datagen
-    networks:
-      - edge-net
-    build:
-      context: .
-      dockerfile: datagen/Dockerfile
-    volumes:
-      - ./datagen:/app/datagen
-      - ./common:/app/common
-    depends_on:
-      - mqtt-broker
-    environment:
-      - MQTT_BROKER=mqtt-
-    command: ["tail", "-f", "/dev/null"]
-
-  processing:
-    container_name: processing
-    networks:
-      - edge-net
-      - shared-net
-    build:
-      context: .
-      dockerfile: processing/Dockerfile
-    volumes:
-      - ./processing:/app/processing
-      - ./common:/app/common
-    depends_on:
-      - mqtt-broker
-    environment:
-      - MQTT_BROKER=mqtt-broker
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256m
-    command: ["tail", "-f", "/dev/null"]
+    <<: [*common-networks, *common-resources]
 
   influxdb:
-    image: influxdb:2.7  # Versão estável
+    image: influxdb:2.7
     container_name: influxdb
     hostname: influx
     ports:
-      - "8086:8086"  # Porta padrão (mude se quiser 8181)
+      - "8086:8086"
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=yourpassword
       - DOCKER_INFLUXDB_INIT_ORG=yourorg
       - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
-    networks:
-      - edge-net
-      - shared-net
+    <<: *common-networks
     volumes:
       - influxdb_data:/var/lib/influxdb2
 
@@ -104,9 +49,7 @@ services:
       - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     depends_on:
       - influxdb
-    networks:
-      - edge-net
-      - shared-net
+    <<: *common-networks
 
   metrics-db:
     image: postgres:16-alpine
@@ -126,14 +69,73 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    <<: *common-networks
+
+  datagen:
+    profiles: ["simulation"]
+    container_name: datagen
     networks:
       - edge-net
-      - shared-net
+    build:
+      context: .
+      dockerfile: datagen/Dockerfile
+    volumes:
+      - ./datagen:/app/datagen
+      - ./common:/app/common
+    depends_on:
+      - mqtt-broker
+    environment:
+      - MQTT_BROKER=mqtt-broker
+    command: ["python", "-u", "datagen/app.py"]
+
+  processing:
+    profiles: ["simulation"]
+    container_name: processing
+    build:
+      context: .
+      dockerfile: processing/Dockerfile
+    volumes:
+      - ./processing:/app/processing
+      - ./common:/app/common
+    depends_on:
+      - mqtt-broker
+    environment:
+      - MQTT_BROKER=mqtt-broker
+    <<: [*common-networks, *common-resources]
+    command: ["python", "-u", "processing/app.py"]
+
+  simulation:
+    profiles: ["simulation"]
+    build:
+      context: .
+      dockerfile: simulation/Dockerfile
+    container_name: simulation
+    depends_on:
+      metrics-db:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./simulation:/app/simulation
+    <<: *common-networks
+    command: ["python", "-u", "simulation/app.py"]
+
+  observer:
+    profiles: ["debug"]
+    build:
+      context: .
+      dockerfile: ./o11y/Dockerfile
+    container_name: observer
+    volumes:
+      - ./o11y:/app/o11y
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mqtt-broker
+    <<: [*common-networks, *common-resources]
+    command: ["tail", "-f", "/dev/null"]
 
 networks:
   edge-net:
-    driver: bridge
-  cloud-net:
     driver: bridge
   shared-net:
     external: true

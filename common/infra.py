@@ -142,6 +142,13 @@ class PostgreSQLHandler:
         finally:
             cursor.close()
 
+    def run_query(self, sql: str) -> list:
+        cursor = self.connection.cursor()
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        self.connection.commit()
+        return results
+
     def clean_tables(self) -> None:
         try:
             cursor = self.connection.cursor()

@@ -56,7 +56,7 @@ class SensorSimulator:
         # limpa as tabelas no início de cada processamento
         sqlite_client = PostgreSQLHandler()
         sqlite_client.init_db()
-        sqlite_client.clean_tables()
+        #sqlite_client.clean_tables()
 
     def generate_output(self,
                         fault_type: str = None,
@@ -124,22 +124,22 @@ class SensorSimulator:
             temperature=temperature
         )
 
+if __name__ == "__main__":
+    # O loop while True permanece igual ao seu (gera, converte para JSON, envia via MQTT, sleep 1s)
+    s = SensorSimulator()
+    mqtt_client = MQTTClient()
+    sql_client = PostgreSQLHandler()
 
-# O loop while True permanece igual ao seu (gera, converte para JSON, envia via MQTT, sleep 1s)
-s = SensorSimulator()
-mqtt_client = MQTTClient()
-sql_client = PostgreSQLHandler()
+    starttime = monotonic()
+    while True:
+        event = s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential")
+        mqtt_client.send(event_to_json(event))
 
-starttime = monotonic()
-while True:
-    event = s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential")
-    mqtt_client.send(event_to_json(event))
+        sql_client.insert_one("events", {
+            "event_id": event["event_id"],
+            "sensor_id": event["sensor_id"],
+            "timestamp": event["timestamp"],
+            "payload": f'{{"temperature": {event["temperature"]}}}'
+        })
 
-    sql_client.insert_one("events", {
-        "event_id": event["event_id"],
-        "sensor_id": event["sensor_id"],
-        "timestamp": event["timestamp"],
-        "payload": f'{{"temperature": {event["temperature"]}}}'
-    })
-
-    sleep(1.0 - ((monotonic() - starttime) % 1.0))
+        sleep(1.0 - ((monotonic() - starttime) % 1.0))
