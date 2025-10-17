@@ -80,10 +80,6 @@ def detect_overheating(output: SensorOutput, engine: Engine, previous_temp: floa
     warning_threshold = max(nominal_temp + 5, engine.max_temperature * 0.8)  # Ex: max(55, 0.8*max_temp)
     grave_threshold = engine.max_temperature  # Grave no max_temperature
 
-    print(temp)
-    print(warning_threshold)
-    print(engine.max_temperature)
-
     if temp > warning_threshold:
         severity = "high" if temp > grave_threshold else "medium"
         alert = {

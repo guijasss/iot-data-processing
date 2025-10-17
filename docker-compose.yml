@@ -72,7 +72,6 @@ services:
     <<: *common-networks
 
   datagen:
-    profiles: ["simulation"]
     container_name: datagen
     networks:
       - edge-net
@@ -86,10 +85,9 @@ services:
       - mqtt-broker
     environment:
       - MQTT_BROKER=mqtt-broker
-    command: ["python", "-u", "datagen/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   processing:
-    profiles: ["simulation"]
     container_name: processing
     build:
       context: .
@@ -102,10 +100,9 @@ services:
     environment:
       - MQTT_BROKER=mqtt-broker
     <<: [*common-networks, *common-resources]
-    command: ["python", "-u", "processing/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   simulation:
-    profiles: ["simulation"]
     build:
       context: .
       dockerfile: simulation/Dockerfile
@@ -118,10 +115,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./simulation:/app/simulation
     <<: *common-networks
-    command: ["python", "-u", "simulation/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   observer:
-    profiles: ["debug"]
     build:
       context: .
       dockerfile: ./o11y/Dockerfile
