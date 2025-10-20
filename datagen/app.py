@@ -60,9 +60,9 @@ class SensorSimulator:
 
     def generate_output(self,
                         fault_type: str = None,
-                        fault_increment: float = 0.05,
+                        fault_increment: float = 0.15,
                         fault_trend_type: str = "exponential",
-                        noise_level: float = 0.1) -> SensorOutput:
+                        noise_level: float = 0.4) -> SensorOutput:
         duration = 1.0
         # Atualiza estado para dependência temporal
         self.current_timestamp = datetime.now() #timedelta(seconds=10)  # Simula intervalo entre medições
@@ -112,7 +112,8 @@ class SensorSimulator:
         current = WaveMeasure(sampling_rate=curr_sr, values=curr_signal.tolist())
 
         # Temperatura final (com variação pequena e realista)
-        temperature = round(self.temperature + random.uniform(-0.5, 0.5), 1)  # Reduzido range de ruído
+        temperature = round(self.temperature + random.uniform(2, 4), 1)  # Reduzido range de ruído
+        print("Temperatura: ", temperature)
 
         return SensorOutput(
             event_id=str(uuid4()),

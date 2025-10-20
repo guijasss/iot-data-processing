@@ -55,7 +55,6 @@ class EventProcessor:
             raise ValueError("Cannot aggregate empty buffer")
 
         aggregated = self._calculate_aggregations(self.buffer)
-        print(f"Aggregation created: {aggregated}")
         return aggregated
 
     @staticmethod

@@ -22,7 +22,7 @@ class MQTTHandler:
         self.client.on_message = self._on_message_wrapper
         self.client.connect(self.broker, self.port, 60)
         self.client.subscribe(topic)
-        print(f"connectionected to {self.broker}:{self.port} and subscribed to {topic}")
+        print(f"connected to {self.broker}:{self.port} and subscribed to {topic}")
         return self.client
 
     def _on_message_wrapper(self, client: mqtt.Client, _, msg: mqtt.MQTTMessage):
@@ -33,7 +33,7 @@ class MQTTHandler:
     def publish(self, topic: str, message: str):
         """Publica mensagem em um tópico"""
         if self.client:
-            self.client.publish(topic, message)
+            self.client.publish(topic, message, qos=1)
 
     def start(self):
         """Inicia o loop MQTT"""
@@ -135,7 +135,6 @@ class PostgreSQLHandler:
         try:
             execute_values(cursor, insert_query, values_to_insert)
             self.connection.commit()
-            print(f"{cursor.rowcount} registros inseridos com sucesso na tabela '{table_name}'.")
         except Exception as e:
             print(f"Erro ao inserir dados na tabela '{table_name}': {e.args}")
             self.connection.rollback()
