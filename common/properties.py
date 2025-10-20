@@ -1,0 +1,15 @@
+# Parâmetros da geração de eventos
+INITIAL_RPM = 1800
+INITIAL_TEMPERATURE = 40.0
+FAULT_LEVEL = 0.0
+FAULT_SCALE = 0.1
+FAULT_INCREMENT = 0.15
+NOISE_LEVEL = 0.4
+
+# Parâmetros do processamento
+AGGREGATION_INTERVAL = 10
+
+# Descrição do motor
+RATED_SPEED = 1800
+RATED_CURRENT = 5.0
+MAX_TEMPERATURE = 44.0

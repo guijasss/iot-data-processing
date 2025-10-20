@@ -7,7 +7,7 @@ from processing.alerts import detect_alerts
 
 
 class EventProcessor:
-    def __init__(self, engine: Engine, aggregation_interval: int = 10):
+    def __init__(self, engine: Engine, aggregation_interval: int):
         self.engine = engine
         self.aggregation_interval = aggregation_interval
         self.buffer: List[SensorOutput] = []
@@ -88,7 +88,6 @@ class EventProcessor:
 
     @staticmethod
     def _calculate_vibration_metrics(buffer: List[SensorOutput]) -> dict:
-        """Calcula métricas de vibração"""
         vib_rms_values = []
         bearing_peaks = []
         bearing_freqs = []
@@ -99,7 +98,6 @@ class EventProcessor:
             vib_rms = np.sqrt(np.mean(vib_values ** 2))
             vib_rms_values.append(vib_rms)
 
-            # Frequência e pico de rolamento
             base_freq = d["rpm"] / 60.0
             bearing_freq = 0.5 * base_freq
             bearing_freqs.append(bearing_freq)
@@ -116,17 +114,14 @@ class EventProcessor:
 
     @staticmethod
     def _calculate_current_metrics(buffer: List[SensorOutput]) -> dict:
-        """Calcula métricas de corrente"""
         curr_rms_values = []
         harmonic_peaks = []
 
         for d in buffer:
-            # RMS
             curr_values = np.array(d["current"]["values"])
             curr_rms = np.sqrt(np.mean(curr_values ** 2))
             curr_rms_values.append(curr_rms)
 
-            # Pico harmônico
             harmonic_peak = np.max(np.abs(np.fft.fft(curr_values))) * 0.01
             harmonic_peaks.append(harmonic_peak)
 
