@@ -1,0 +1,36 @@
+sequenceDiagram
+    participant O as Orquestrador
+    participant MM as Motor Monitor
+    participant MQ as MQTT Broker
+    participant DB as TestDB (PostgreSQL)
+
+    loop Rodada de Teste
+
+        %% 1. Orquestrador inicia o processo do Monitor
+        O->>+MM: Inicia processo
+
+        %% 2. Monitor se inicializa
+        MM->>MQ: Envia para o tópico 'readings'
+        Note over MM: Monitor está pronto e ouvindo.
+
+        %% 3. Orquestrador dispara o evento
+        O->>MQ: Publica mensagem de gatilho do alerta (e.g. temperatura=45.0)
+
+        %% 4. Broker entrega a mensagem
+        MQ->>MM: callback de recebimento de evento(msg)
+        activate MM
+
+        %% 5. Monitor processa e dispara o alerta
+        MM->>MM: processar o evento recebido
+        Note over MM: Alerta 'overheating' detectado!
+
+        %% 6. Monitor registra a latência e se encerra
+        MM->>DB: Grava o alerta no banco de dados
+
+        %% 7. Monitor se auto-encerra (conforme regra de teste)
+        MM-->>-O: Processo se auto-encerra
+
+        deactivate MM
+
+        Note over O: Aguarda X segundos para a próxima rodada...
+    end

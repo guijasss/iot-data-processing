@@ -1,0 +1,13 @@
+sequenceDiagram
+    loop Ciclo de Agregação (a cada 10s)
+        Edge Device ->> Edge Device: 1. Coleta e acumula leituras dos sensores
+        Edge Device ->> Edge Device: 2. Calcula agregações (Média, Min, Max)
+        Edge Device ->> MQTT: 3. Publica o lote agregado
+        
+        MQTT ->> Telegraf: 4. Entrega mensagem de agregação
+        
+        Telegraf ->> InfluxDB: 5. Escreve agregação de eventos
+        activate InfluxDB
+        InfluxDB ->> InfluxDB: 6. Persiste os dados no bucket
+        deactivate InfluxDB
+    end
