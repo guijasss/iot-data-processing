@@ -85,7 +85,7 @@ services:
       - mqtt-broker
     environment:
       - MQTT_BROKER=mqtt-broker
-    command: ["tail", "-f", "/dev/null"]
+    command: ["python", "datagen/app.py"]
 
   processing:
     container_name: processing
@@ -100,7 +100,7 @@ services:
     environment:
       - MQTT_BROKER=mqtt-broker
     <<: [*common-networks, *common-resources]
-    command: ["tail", "-f", "/dev/null"]
+    command: ["python", "processing/app.py"]
 
   simulation:
     build:
@@ -128,7 +128,7 @@ services:
     depends_on:
       - mqtt-broker
     <<: [*common-networks, *common-resources]
-    command: ["tail", "-f", "/dev/null"]
+    command: ["python", "o11y/app.py"]
 
 networks:
   edge-net:

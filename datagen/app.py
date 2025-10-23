@@ -57,7 +57,7 @@ class SensorSimulator:
 
         sqlite_client = PostgreSQLHandler()
         sqlite_client.init_db()
-        sqlite_client.clean_tables()
+
     def generate_output(self,
                         fault_increment: float,
                         fault_type: str = None,

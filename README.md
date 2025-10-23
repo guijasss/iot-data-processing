@@ -46,6 +46,10 @@ Este teste mede a eficiência do "caminho quente" da arquitetura. O objetivo é 
 
 ### Processo de Análise
 
+observer processing mqtt-broker
+datagen simulation
+d exec -it simulation python simulation/app.py
+
 1.  **Inicie a Simulação:** Execute o Docker Compose com o perfil `simulation`. Isso iniciará todos os serviços, incluindo o `simulation/app.py`, que atua como o orquestrador do teste.
     ```bash
     docker exec -it simulation python simulation/app.py

@@ -2,7 +2,6 @@ from typing import cast
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
-# --- SUAS IMPORTAÇÕES REAIS ---
 from common.entities import Engine
 from common.properties import *
 from common.utils import event_to_json

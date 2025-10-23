@@ -1,8 +1,9 @@
 from docker import from_env
 from time import sleep, strftime
 from tabulate import tabulate
+from datetime import datetime
 
-from common.infra import SQLiteHandler
+from common.infra import PostgreSQLHandler
 
 # Inicializa cliente Docker
 client = from_env()
@@ -44,6 +45,7 @@ def get_container_metrics():
         restarts = c.attrs.get("RestartCount", 0)
 
         metrics_list.append({
+            "timestamp": datetime.now(),
             "container": c.name,
             "cpu_percent": cpu_percent,
             "mem_usage": mem_used,
@@ -73,16 +75,16 @@ def format_display_metrics(metrics: list) -> list:
     ]
 
 if __name__ == "__main__":
-    sqlite_handler = SQLiteHandler()
+    db_handler = PostgreSQLHandler()
 
     try:
         while True:
             metrics = get_container_metrics()
-            sqlite_handler.insert_all(metrics)
+            db_handler.insert_many("metrics", metrics)
 
             print("\033c", end="")
             print(f"📊 Métricas dos Containers - Atualizado em {strftime('%Y-%m-%d %H:%M:%S')}")
             print(tabulate(format_display_metrics(metrics), headers="keys", tablefmt="grid"))
             sleep(5)
     except KeyboardInterrupt:
-        sqlite_handler.close_connection()
+        db_handler.close_connection()
