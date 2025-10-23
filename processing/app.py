@@ -78,6 +78,8 @@ class MotorMonitor:
 
 # --- main.py (Modificado para incluir o cleanup) ---
 if __name__ == "__main__":
+    print(f"Início do processamento! {datetime.now()}")
+
     monitor = MotorMonitor(
         engine_id="motor-001",
         rated_speed=RATED_SPEED,

@@ -44,13 +44,13 @@ class MQTTHandler:
 class PostgreSQLHandler:
     """Gerencia conexões e operações com o PostgreSQL."""
 
-    def __init__(self):
+    def __init__(self, containerized: bool = True):
         # Carrega os parâmetros de conexão a partir de variáveis de ambiente
         self.db_params = {
             'dbname': 'metrics',
             'user': 'user_tcc',
             'password': 'password_tcc',
-            'host': 'metrics_db',
+            'host': 'metrics_db' if containerized == True else 'localhost',
             'port': 5432
         }
         self.connection = self.init_db()

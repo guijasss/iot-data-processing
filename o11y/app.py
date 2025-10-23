@@ -15,6 +15,7 @@ def get_container_metrics():
     containers = client.containers.list()
 
     metrics_list = []
+    batch_timestamp = datetime.now()
 
     for c in containers:
         stats = c.stats(stream=False)
@@ -45,7 +46,7 @@ def get_container_metrics():
         restarts = c.attrs.get("RestartCount", 0)
 
         metrics_list.append({
-            "timestamp": datetime.now(),
+            "timestamp": batch_timestamp,
             "container": c.name,
             "cpu_percent": cpu_percent,
             "mem_usage": mem_used,

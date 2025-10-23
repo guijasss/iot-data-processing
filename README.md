@@ -45,19 +45,22 @@ do pipeline de dados históricos (Cold Path).
 Este teste mede a eficiência do "caminho quente" da arquitetura. O objetivo é calcular o tempo exato, em milissegundos, entre o momento em que um evento anômalo é **gerado** pelo sensor e o momento em que ele é **processado e salvo** como um alerta no banco de dados.
 
 ### Processo de Análise
-
-observer processing mqtt-broker
-datagen simulation
-d exec -it simulation python simulation/app.py
-
-1.  **Inicie a Simulação:** Execute o Docker Compose com o perfil `simulation`. Isso iniciará todos os serviços, incluindo o `simulation/app.py`, que atua como o orquestrador do teste.
+1. **Iniciar o setup do experimento:** Iniciar os container de processamento, o broker MQTT e o script de observabilidade de métricas.
     ```bash
-    docker exec -it simulation python simulation/app.py
+    docker-compose up -d observer processing mqtt-broker
     ```
 
-2.  **Aguarde a Geração de Alertas:** Deixe o sistema rodar por alguns minutos. O orquestrador (`simulation/app.py`) irá reiniciar automaticamente o `datagen` toda vez que um alerta for detectado, criando múltiplos ciclos de "falha" para a coleta de dados.
+2. **Iniciar os demais containers:** Os constainers para geração de eventos e gerenciamento da simulação são iniciados.
+    ```bash
+    docker-compose up -d simulation datagen
+    ```
 
-3.  **Execute a Análise SQL:** Conecte-se ao contêiner do banco de dados `metrics-db` (PostgreSQL) e execute o script SQL abaixo. Este script compara o timestamp do evento original com o timestamp do *primeiro alerta* correspondente em cada ciclo de simulação.
+3. **Executar o script de simulação:** Deixe o sistema rodar por alguns minutos. O orquestrador (`simulation/app.py`) irá reiniciar automaticamente o `datagen` toda vez que um alerta for detectado, criando múltiplos ciclos de "falha" para a coleta de dados.
+    ```bash
+    docker exec -it simulation python simulation/app.py
+    ```    
+
+4. **Execute a Análise SQL:** Conecte-se ao contêiner do banco de dados `metrics-db` (PostgreSQL) e execute o script SQL abaixo. Este script compara o timestamp do evento original com o timestamp do *primeiro alerta* correspondente em cada ciclo de simulação.
 
     ```sql
     WITH base_alerts AS (

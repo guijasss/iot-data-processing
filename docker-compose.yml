@@ -43,10 +43,13 @@ services:
     container_name: telegraf
     hostname: telegraf
     restart: unless-stopped
+    group_add:
+      - 1001 # docker group
     environment:
       - INFLUX_TOKEN=${INFLUX_TOKEN}
     volumes:
       - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - influxdb
     <<: *common-networks
@@ -100,7 +103,7 @@ services:
     environment:
       - MQTT_BROKER=mqtt-broker
     <<: [*common-networks, *common-resources]
-    command: ["python", "processing/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   simulation:
     build:
@@ -115,20 +118,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./simulation:/app/simulation
     <<: *common-networks
-    command: ["tail", "-f", "/dev/null"]
-
-  observer:
-    build:
-      context: .
-      dockerfile: ./o11y/Dockerfile
-    container_name: observer
-    volumes:
-      - ./o11y:/app/o11y
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - mqtt-broker
-    <<: [*common-networks, *common-resources]
-    command: ["python", "o11y/app.py"]
+    command: ["python", "simulation/app.py"]
 
 networks:
   edge-net:

@@ -84,7 +84,7 @@ class SensorSimulator:
             self.temperature += temp_increment
             self.temperature = min(150.0, self.temperature)
 
-        vib_sr = 2000  # Hz
+        vib_sr = 20000  # Hz
         vib_values = generate_vibration_values(
             sampling_rate=vib_sr,
             rpm=self.current_rpm,
@@ -94,7 +94,7 @@ class SensorSimulator:
         )
         vibration = WaveMeasure(sampling_rate=vib_sr, values=vib_values)
 
-        curr_sr = 1000
+        curr_sr = 10000
         num_curr = int(curr_sr * duration)
         time_axis_curr = linspace(0, duration, num_curr)
         curr_signal = 5.0 + sin(2 * pi * 50 * time_axis_curr)
