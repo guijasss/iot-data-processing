@@ -2,13 +2,12 @@
 
 import subprocess
 import json
-import time
 from datetime import datetime, timezone
-import os
 import sys
+from common.properties import NUM_MOTORS
 
 # --- Configuração ---
-OUTPUT_FILE = "../experiments/changing_frequency/docker_stats_log_streaming.jsonl"
+OUTPUT_FILE = f"{NUM_MOTORS}_motors_docker_stats_log_streaming.jsonl"
 # --------------------
 
 DOCKER_CMD = [

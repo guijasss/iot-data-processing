@@ -106,15 +106,13 @@ class SensorSimulator:
             sensor_id=self.sensor_id,
             timestamp=self.current_timestamp,
             rpm=self.current_rpm,
-            #vibration=vibration,
-            #current=current,
+            vibration=vibration,
+            current=current,
             temperature=temperature
         )
 
 
 if __name__ == "__main__":
-    NUM_MOTORS = 5
-
     # 1. Crie X instâncias de simuladores (uma para cada motor)
     simulators = []
     for i in range(NUM_MOTORS):
