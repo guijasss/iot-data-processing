@@ -100,6 +100,7 @@ services:
       - ./common:/app/common
     depends_on:
       - mqtt-broker
+      - influxdb
     environment:
       - MQTT_BROKER=mqtt-broker
     <<: [*common-networks, *common-resources]
@@ -118,7 +119,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./simulation:/app/simulation
     <<: *common-networks
-    command: ["python", "simulation/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
 networks:
   edge-net:

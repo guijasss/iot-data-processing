@@ -1,91 +1,102 @@
-from docker import from_env
-from time import sleep, strftime
-from tabulate import tabulate
-from datetime import datetime
+#!/usr/bin/env python3
 
-from common.infra import PostgreSQLHandler
+import subprocess
+import json
+import time
+from datetime import datetime, timezone
+import os
+import sys
 
-# Inicializa cliente Docker
-client = from_env()
+# --- Configuração ---
+OUTPUT_FILE = "../experiments/changing_frequency/docker_stats_log_streaming.jsonl"
+# --------------------
 
-DEFAULT_PRECISION = 2
+DOCKER_CMD = [
+    "docker", "stats",
+    "--format", "{{json .}}"
+]
 
-# Função para coletar métricas de todos os containers
-def get_container_metrics():
-    containers = client.containers.list()
+print(f"Iniciando monitoramento de 'docker stats' (Modo Streaming)...")
+print(f"Salvando dados em: {OUTPUT_FILE}")
+print("Pressione Ctrl+C para parar a coleta.")
 
-    metrics_list = []
-    batch_timestamp = datetime.now()
+process = None
+try:
+    process = subprocess.Popen(
+        DOCKER_CMD,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding='utf-8',
+        bufsize=1
+    )
 
-    for c in containers:
-        stats = c.stats(stream=False)
+    with open(OUTPUT_FILE, 'a', encoding='utf-8') as f:
+        for line in process.stdout:
 
-        # CPU %
-        cpu_delta = stats["cpu_stats"]["cpu_usage"]["total_usage"] - stats["precpu_stats"]["cpu_usage"]["total_usage"]
-        system_delta = stats["cpu_stats"].get("system_cpu_usage", 0) - stats["precpu_stats"].get("system_cpu_usage", 0)
-        percpu = stats["cpu_stats"]["cpu_usage"].get("percpu_usage", [])
-        num_cpus = len(percpu) if percpu else 1
-        cpu_percent = round((cpu_delta / system_delta) * num_cpus * 100.0, DEFAULT_PRECISION) if system_delta > 0 else 0.0
+            # --- INÍCIO DA CORREÇÃO v3 ---
 
-        # Memória
-        mem_used = round(stats["memory_stats"]["usage"] / (1024 * 1024), DEFAULT_PRECISION)
-        mem_limit = round(stats["memory_stats"]["limit"] / (1024 * 1024), DEFAULT_PRECISION)
-        mem_percent = round((mem_used / mem_limit * 100), DEFAULT_PRECISION) if mem_limit > 0 else 0.0
+            # 1. Tira espaços em branco *comuns* (não resolve o problema)
+            line_stripped = line.strip()
 
-        # Rede
-        networks = stats.get("networks", {})
-        rx = round(sum(n["rx_bytes"] for n in networks.values()) / (1024*1024), DEFAULT_PRECISION)
-        tx = round(sum(n["tx_bytes"] for n in networks.values()) / (1024*1024), DEFAULT_PRECISION)
+            if not line_stripped:
+                continue
 
-        # I/O de bloco
-        blkio = stats.get("blkio_stats", {}).get("io_service_bytes_recursive") or []
-        io_read = sum(x["value"] for x in blkio if x.get("op") == "Read") / (1024*1024)
-        io_write = sum(x["value"] for x in blkio if x.get("op") == "Write") / (1024*1024)
+            # 2. Encontra o PRIMEIRO '{'
+            json_start_index = line_stripped.find('{')
 
-        # Reinícios
-        restarts = c.attrs.get("RestartCount", 0)
+            # 3. Encontra o ÚLTIMO '}'
+            # Usamos rfind() para "find reverso"
+            json_end_index = line_stripped.rfind('}')
 
-        metrics_list.append({
-            "timestamp": batch_timestamp,
-            "container": c.name,
-            "cpu_percent": cpu_percent,
-            "mem_usage": mem_used,
-            "mem_limit": mem_limit,
-            "mem_percent": mem_percent,
-            "rx_bytes": rx,
-            "tx_bytes": tx,
-            "io_read": io_read,
-            "io_write": io_write,
-            "restarts": restarts
-        })
+            # 4. Validação
+            # Se não achou um { ou }, ou se o } veio antes do {
+            if json_start_index == -1 or json_end_index == -1 or json_end_index < json_start_index:
+                # Linha inválida, pular
+                continue
 
-    return metrics_list
+            # 5. Extrai a string JSON limpa
+            # Do primeiro { até o último } (incluindo ele, por isso +1)
+            json_string = line_stripped[json_start_index: json_end_index + 1]
 
-#TODO: tipar o retorno das métricas dos containers
-def format_display_metrics(metrics: list) -> list:
-    return [
-        {
-            "Container": m.get("container"),
-            "CPU %": f'{m.get("cpu_percent")}%',
-            "MEM USAGE / LIMIT": f'{m.get("mem_usage")} MiB / {m.get("mem_limit"):.0f}MiB',
-            "MEM %": f"{m.get('mem_percent')}%",
-            "NET I/O": f"{m.get('rx_bytes')}MB / {m.get('tx_bytes')}MB",
-            "BLOCK I/O": f"{m.get('io_read')}MB / {m.get('io_write')}MB",
-            "Restarts": m.get("restarts")
-        } for m in metrics
-    ]
+            # --- FIM DA CORREÇÃO v3 ---
 
-if __name__ == "__main__":
-    db_handler = PostgreSQLHandler()
+            snapshot_time_utc = datetime.now(timezone.utc).isoformat()
 
-    try:
-        while True:
-            metrics = get_container_metrics()
-            db_handler.insert_many("metrics", metrics)
+            try:
+                # 6. Tente decodificar a string JSON agora BEM definida
+                container_stat = json.loads(json_string)
 
-            print("\033c", end="")
-            print(f"📊 Métricas dos Containers - Atualizado em {strftime('%Y-%m-%d %H:%M:%S')}")
-            print(tabulate(format_display_metrics(metrics), headers="keys", tablefmt="grid"))
-            sleep(5)
-    except KeyboardInterrupt:
-        db_handler.close_connection()
+                log_entry = {
+                    "timestamp_utc": snapshot_time_utc,
+                    "container": container_stat
+                }
+
+                f.write(json.dumps(log_entry) + '\n')
+
+            except json.JSONDecodeError as e:
+                print(f"[{snapshot_time_utc}] Erro ao decodificar JSON: {e} | Linha (fatiada): {json_string}",
+                      file=sys.stderr)
+
+    # O resto do script é idêntico...
+    stderr_output = process.stderr.read()
+    if stderr_output:
+        print(f"\nErro reportado pelo 'docker stats':\n{stderr_output}", file=sys.stderr)
+
+except KeyboardInterrupt:
+    print("\nMonitoramento interrompido pelo usuário.")
+    if process:
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    print(f"Dados salvos em {OUTPUT_FILE}")
+
+except FileNotFoundError:
+    print("Erro: Comando 'docker' não encontrado. Verifique sua instalação e PATH.", file=sys.stderr)
+
+except Exception as e:
+    print(f"Um erro inesperado ocorreu: {e}", file=sys.stderr)
+    if process:
+        process.kill()
