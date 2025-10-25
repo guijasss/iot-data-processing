@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from common.entities import SensorOutput, WaveMeasure
 from common.properties import *
-from common.infra import PostgreSQLHandler
 from datagen.infra import MQTTClient
 from common.utils import event_to_json
 
@@ -55,9 +54,6 @@ class SensorSimulator:
         self.fault_type = None
         self.fault_scale = FAULT_SCALE
 
-        sqlite_client = PostgreSQLHandler()
-        sqlite_client.init_db()
-
     def generate_output(self,
                         fault_increment: float,
                         fault_type: str = None,
@@ -84,18 +80,16 @@ class SensorSimulator:
             self.temperature += temp_increment
             self.temperature = min(150.0, self.temperature)
 
-        vib_sr = 20000  # Hz
         vib_values = generate_vibration_values(
-            sampling_rate=vib_sr,
+            sampling_rate=VIBRATION_SAMPLING_RATE,
             rpm=self.current_rpm,
             fault_level=self.fault_level,
             noise_level=NOISE_LEVEL,
             fault_type=self.fault_type
         )
-        vibration = WaveMeasure(sampling_rate=vib_sr, values=vib_values)
+        vibration = WaveMeasure(sampling_rate=VIBRATION_SAMPLING_RATE, values=vib_values)
 
-        curr_sr = 10000
-        num_curr = int(curr_sr * duration)
+        num_curr = int(CURRENT_SAMPLING_RATE * duration)
         time_axis_curr = linspace(0, duration, num_curr)
         curr_signal = 5.0 + sin(2 * pi * 50 * time_axis_curr)
         curr_signal += random.normal(0, 0.2, num_curr)
@@ -103,7 +97,7 @@ class SensorSimulator:
         if self.fault_type == "overload":
             harmonic_freq = 150
             curr_signal += self.fault_level * sin(2 * pi * harmonic_freq * time_axis_curr)
-        current = WaveMeasure(sampling_rate=curr_sr, values=curr_signal.tolist())
+        current = WaveMeasure(sampling_rate=CURRENT_SAMPLING_RATE, values=curr_signal.tolist())
 
         temperature = round(self.temperature + random.uniform(1, -1), 1)
 
@@ -112,26 +106,64 @@ class SensorSimulator:
             sensor_id=self.sensor_id,
             timestamp=self.current_timestamp,
             rpm=self.current_rpm,
-            vibration=vibration,
-            current=current,
+            #vibration=vibration,
+            #current=current,
             temperature=temperature
         )
 
+
 if __name__ == "__main__":
-    s = SensorSimulator(sensor_id="edge-001")
+    NUM_MOTORS = 5
+
+    # 1. Crie X instâncias de simuladores (uma para cada motor)
+    simulators = []
+    for i in range(NUM_MOTORS):
+        simulators.append(SensorSimulator(sensor_id=f"edge-{i + 1:03d}"))
+
     mqtt_client = MQTTClient()
-    sql_client = PostgreSQLHandler()
+
+    # 2. Calcule o novo intervalo
+    # Se NUM_MOTORS = 3, queremos 3 eventos/s
+    # O intervalo entre eventos deve ser 1.0 / 3 = 0.333s
+    try:
+        INTERVAL = 1.0 / NUM_MOTORS
+    except ZeroDivisionError:
+        print("NUM_MOTORS não pode ser zero.")
+        exit(1)
 
     starttime = monotonic()
+    event_counter = 0
+
+    print(f"Iniciando simulação com {NUM_MOTORS} motores.")
+    print(f"Taxa alvo: {NUM_MOTORS} eventos/segundo (Intervalo: {INTERVAL:.4f}s)")
+
     while True:
-        event = s.generate_output(fault_type="bearing_wear", fault_increment=0.1, fault_trend_type="exponential")
+        # 3. Determine qual motor deve enviar o evento agora (rodízio)
+        # event_counter % NUM_MOTORS vai ciclar: 0, 1, 2, 0, 1, 2, ...
+        motor_index = event_counter % NUM_MOTORS
+        sensor = simulators[motor_index]
+
+        # 4. Gere e envie o evento para ESTE motor
+        # (A lógica da falha pode ser a mesma ou diferente por motor)
+        event = sensor.generate_output(
+            fault_type="bearing_wear",
+            fault_increment=0.1,
+            fault_trend_type="exponential"
+        )
         mqtt_client.send(event_to_json(event))
 
-        sql_client.insert_one("events", {
-            "event_id": event["event_id"],
-            "sensor_id": event["sensor_id"],
-            "timestamp": event["timestamp"],
-            "payload": f'{{"temperature": {event["temperature"]}}}'
-        })
+        event_counter += 1
 
-        sleep(1.0 - ((monotonic() - starttime) % 1.0))
+        # 5. Use a sua lógica de sleep, mas com o novo INTERVAL
+        # Isso garante que o loop tente rodar a cada 0.333s (para 3 motores)
+        sleep(INTERVAL - ((monotonic() - starttime) % INTERVAL))
+
+
+# sql_client = PostgreSQLHandler()
+#
+# sql_client.insert_one("events", {
+#     "event_id": event["event_id"],
+#     "sensor_id": event["sensor_id"],
+#     "timestamp": event["timestamp"],
+#     "payload": f'{{"temperature": {event["temperature"]}}}'
+# })
