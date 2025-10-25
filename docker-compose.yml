@@ -84,11 +84,12 @@ services:
     volumes:
       - ./datagen:/app/datagen
       - ./common:/app/common
+      - ./logs:/app/logs
     depends_on:
       - mqtt-broker
     environment:
       - MQTT_BROKER=mqtt-broker
-    command: ["python", "datagen/app.py"]
+    command: ["tail", "-f", "/dev/null"]
 
   processing:
     container_name: processing

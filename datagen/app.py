@@ -2,6 +2,7 @@ from numpy import exp, linspace, pi, random, sin, sqrt
 from datetime import datetime
 from time import monotonic, sleep
 from uuid import uuid4
+from json import dumps
 
 from common.entities import SensorOutput, WaveMeasure
 from common.properties import *
@@ -131,6 +132,7 @@ if __name__ == "__main__":
 
     starttime = monotonic()
     event_counter = 0
+    start_datagen = datetime.now().isoformat()
 
     print(f"Iniciando simulação com {NUM_MOTORS} motores.")
     print(f"Taxa alvo: {NUM_MOTORS} eventos/segundo (Intervalo: {INTERVAL:.4f}s)")
@@ -148,6 +150,15 @@ if __name__ == "__main__":
             fault_increment=0.1,
             fault_trend_type="exponential"
         )
+
+        with open(f"/app/logs/events_{start_datagen}", "a") as file:
+            file.write(event_to_json({
+                "timestamp": event["timestamp"],
+                "event_id": event["event_id"],
+                "sensor_id": event["sensor_id"],
+                "temperature": event["temperature"]
+            }) + '\n')
+
         mqtt_client.send(event_to_json(event))
 
         event_counter += 1
