@@ -1,5 +1,7 @@
 from numpy import abs, array, max as npmax, mean, sqrt
 from scipy.fft import fft, fftfreq
+from datetime import datetime
+
 from common.entities import Engine, SensorOutput
 
 
@@ -25,10 +27,11 @@ def detect_bearing_wear(output: SensorOutput, engine: Engine) -> dict | None:
 
     if rms_vib > rms_threshold and peak_bearing > peak_threshold:
         severity = "high" if rms_vib > rms_threshold * 1.5 else "medium"
+        print("ALERTA")
         return {
             "event_id": output["event_id"],
             "sensor_id": output["sensor_id"],
-            "timestamp": output["timestamp"],
+            "timestamp": datetime.now(),
             "type": "bearing_wear",
             "severity": severity,
             "details": f"RMS={rms_vib:.2f}g (threshold={rms_threshold:.2f}), Pico={peak_bearing:.2f}@{bearing_freq:.1f}Hz (threshold={peak_threshold:.2f})"
@@ -63,7 +66,7 @@ def detect_overload(output: SensorOutput, engine: Engine) -> dict | None:
         return {
             "event_id": output["event_id"],
             "sensor_id": output["sensor_id"],
-            "timestamp": output["timestamp"],
+            "timestamp": datetime.now(),
             "type": "overload",
             "severity": severity,
             "details": f"RMS={rms_curr:.2f}A (threshold medium={rms_medium_threshold:.2f}, high={rms_high_threshold:.2f}), Harmônico={(peak_harm / peak_fund) * 100:.1f}%"
@@ -71,48 +74,24 @@ def detect_overload(output: SensorOutput, engine: Engine) -> dict | None:
     return None
 
 
-def detect_overheating(output: SensorOutput, engine: Engine, previous_temp: float = None) -> dict | None:
-    """Detecta superaquecimento via temperatura (threshold e tendência). Thresholds baseados em max_temperature."""
-    temp = output["temperature"]
+def detect_overheating(output: SensorOutput, engine: Engine) -> dict | None:
+    temperature = output["temperature"]
     alert = None
 
-    nominal_temp = 40.0  # Assumido do exemplo; poderia vir da Engine se adicionar campo
-    warning_threshold = max(nominal_temp + 5, engine.max_temperature * 0.8)  # Ex: max(55, 0.8*max_temp)
-    grave_threshold = engine.max_temperature  # Grave no max_temperature
-
-    if temp > warning_threshold:
-        severity = "high" if temp > grave_threshold else "medium"
+    if temperature > engine.max_temperature:
         alert = {
             "event_id": output["event_id"],
             "sensor_id": output["sensor_id"],
-            "timestamp": output["timestamp"],
+            "timestamp": datetime.now(),
             "type": "overheating",
-            "severity": severity,
-            "details": f"Temperatura={temp:.1f}°C (warning threshold={warning_threshold:.1f}, grave={grave_threshold:.1f})"
+            "severity": "high",
+            "details": f"Temperatura: {temperature}"
         }
-
-    # Tendência (mantida como no exemplo: +5°C para warning)
-    if previous_temp is not None and (temp - previous_temp) > 5:
-        trend_alert = {
-            "event_id": output["event_id"],
-            "sensor_id": output["sensor_id"],
-            "timestamp": output["timestamp"],
-            "type": "overheating_trend",
-            "severity": "warning",
-            "details": f"Aumento={temp - previous_temp:.1f}°C"
-        }
-        # Mescla se já houver alerta
-        if alert:
-            alert["details"] += f"; {trend_alert['details']}"
-            alert["severity"] = max(alert["severity"], trend_alert["severity"],
-                                    key=lambda s: ["warning", "medium", "high"].index(s))
-        else:
-            alert = trend_alert
 
     return alert
 
 
-def detect_alerts(output: SensorOutput, engine: Engine, previous_temp: float = None) -> list[dict]:
+def detect_alerts(output: SensorOutput, engine: Engine) -> list[dict]:
     alerts = []
     bearing_alert = detect_bearing_wear(output, engine)
     if bearing_alert:
@@ -120,7 +99,7 @@ def detect_alerts(output: SensorOutput, engine: Engine, previous_temp: float = N
     overload_alert = detect_overload(output, engine)
     if overload_alert:
         alerts.append(overload_alert)
-    overheating_alert = detect_overheating(output, engine, previous_temp)
+    overheating_alert = detect_overheating(output, engine)
     if overheating_alert:
         alerts.append(overheating_alert)
     return alerts

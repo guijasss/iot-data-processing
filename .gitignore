@@ -7,3 +7,4 @@ __pycache__/
 postgres-data/
 *.jsonl
 *.csv
+experiments/hot_path/logs/*

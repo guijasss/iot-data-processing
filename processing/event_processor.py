@@ -11,7 +11,6 @@ class EventProcessor:
         self.engine = engine
         self.aggregation_interval = aggregation_interval
         self.buffer: List[SensorOutput] = []
-        self.previous_temp: Optional[float] = None
         self.last_aggregation_time = time()
 
     def process_event(self, payload: str) -> tuple[List[dict], Optional[SensorOutputAggregation]]:
@@ -39,11 +38,7 @@ class EventProcessor:
         return alerts, aggregation
 
     def _detect_alerts(self, output: SensorOutput) -> List[dict]:
-        """Detecta alertas baseados no output do sensor"""
-        alerts = detect_alerts(output, self.engine, previous_temp=self.previous_temp)
-
-        self.previous_temp = output["temperature"]
-        return alerts
+        return detect_alerts(output, self.engine)
 
     def _should_aggregate(self) -> bool:
         """Verifica se é hora de agregar os dados"""

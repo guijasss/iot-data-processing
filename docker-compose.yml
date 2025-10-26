@@ -99,6 +99,7 @@ services:
     volumes:
       - ./processing:/app/processing
       - ./common:/app/common
+      - ./logs:/app/logs
     depends_on:
       - mqtt-broker
       - influxdb
