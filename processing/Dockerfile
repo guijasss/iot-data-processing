@@ -5,8 +5,6 @@ WORKDIR /app
 # Copia requirements primeiro
 COPY processing/requirements.txt ./processing/
 
-COPY ../.env .
-
 # Instala dependências
 RUN pip install --no-cache-dir -r ./processing/requirements.txt
 

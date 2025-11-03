@@ -120,6 +120,7 @@ if __name__ == "__main__":
 
     mqtt_client = MQTTHandler(env="local")
     mqtt_client.connect("readings", lambda c, m: None)
+    mqtt_client.start()
 
     # 2. Calcule o novo intervalo
     # Se NUM_MOTORS = 3, queremos 3 eventos/s

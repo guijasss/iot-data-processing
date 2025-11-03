@@ -3,19 +3,7 @@ from typing import cast, Dict
 import paho.mqtt.client as mqtt
 from datetime import datetime
 from time import sleep  # Importado para o loop principal
-
-# Supondo que o handler que você quer usar é o do seu Canvas
-# Mude 'mqtt_handler_cloud' se o nome do seu arquivo for outro
-try:
-    from mqtt_handler_cloud import MQTTHandler
-except ImportError:
-    print("=" * 50)
-    print("ERRO: 'mqtt_handler_cloud.py' não encontrado.")
-    print("Por favor, garanta que o arquivo do Canvas esteja salvo no mesmo diretório.")
-    print("Usando o import 'common.infra.MQTTHandler' como fallback...")
-    print("=" * 50)
-    # Fallback para o seu import original
-    from common.infra import MQTTHandler
+from common.infra import MQTTHandler
 
 # Seus imports originais
 from common.entities import Engine
@@ -192,4 +180,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Erro inesperado no loop principal: {e}")
     finally:
-        app.stop()  # Garante que os loops MQTT parem
+        app.stop()

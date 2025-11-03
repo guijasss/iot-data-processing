@@ -1,13 +1,25 @@
-from os import getenv
+from os import environ, getenv
+from dotenv import load_dotenv
 
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-# Config (de env vars)
-INFLUX_URL = getenv('INFLUX_URL', 'http://influxdb:8086')
-INFLUX_TOKEN = getenv('INFLUX_TOKEN', 'ObhIcDp2oFAIXr0YZJJH8bEYntIRaLBQ10bNuz0h-9CRs-HBW6VpRo0GZUh0m9fUNQmCd7Eb_ueIPysowj2jKA==')  # Gere no InfluxUI
-INFLUX_ORG = getenv('INFLUX_ORG', 'yourorg')
-INFLUX_BUCKET = getenv('INFLUX_BUCKET', 'sensor_data')
+load_dotenv()
+env = 'CLOUD'
+
+def switch_environment_variables(old: str, new: str):
+    environ[new] = getenv(old)
+    del environ[old]
+
+switch_environment_variables(f'{env}_INFLUX_URL', 'INFLUX_URL')
+switch_environment_variables(f'{env}_INFLUX_TOKEN', 'INFLUX_TOKEN')
+switch_environment_variables(f'{env}_INFLUX_ORG', 'INFLUX_ORG')
+switch_environment_variables(f'{env}_INFLUX_BUCKET', 'INFLUX_BUCKET')
+
+INFLUX_URL = getenv('INFLUX_URL', 'INFLUX_URL')
+INFLUX_TOKEN = getenv('INFLUX_TOKEN', 'INFLUX_TOKEN')
+INFLUX_ORG = getenv('INFLUX_ORG', 'INFLUX_ORG')
+INFLUX_BUCKET = getenv('INFLUX_BUCKET', 'INFLUX_BUCKET')
 
 client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 write_api = client.write_api(write_options=SYNCHRONOUS)

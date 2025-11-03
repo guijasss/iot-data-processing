@@ -77,7 +77,7 @@ class MQTTHandler:
     def start(self):
         """Inicia o loop MQTT"""
         if self.client:
-            self.client.loop_forever()
+            self.client.loop_start()
 
     def stop(self):
         self.client.loop_stop()
