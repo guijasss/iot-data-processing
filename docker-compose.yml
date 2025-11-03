@@ -54,26 +54,6 @@ services:
       - influxdb
     <<: *common-networks
 
-  metrics-db:
-    image: postgres:16-alpine
-    container_name: metrics-db
-    hostname: metrics_db
-    environment:
-      POSTGRES_USER: user_tcc
-      POSTGRES_PASSWORD: password_tcc
-      POSTGRES_DB: metrics
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U user_tcc -d metrics" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    <<: *common-networks
-
   datagen:
     container_name: datagen
     networks:
@@ -106,21 +86,6 @@ services:
     environment:
       - MQTT_BROKER=mqtt-broker
     <<: [*common-networks, *common-resources]
-    command: ["tail", "-f", "/dev/null"]
-
-  simulation:
-    build:
-      context: .
-      dockerfile: simulation/Dockerfile
-    container_name: simulation
-    depends_on:
-      metrics-db:
-        condition: service_healthy
-    env_file: .env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./simulation:/app/simulation
-    <<: *common-networks
     command: ["tail", "-f", "/dev/null"]
 
 networks:

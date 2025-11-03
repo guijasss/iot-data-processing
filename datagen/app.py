@@ -2,11 +2,10 @@ from numpy import exp, linspace, pi, random, sin, sqrt
 from datetime import datetime
 from time import monotonic, sleep
 from uuid import uuid4
-from json import dumps
 
 from common.entities import SensorOutput, WaveMeasure
 from common.properties import *
-from datagen.infra import MQTTClient
+from common.infra import MQTTHandler
 from common.utils import event_to_json
 
 def generate_vibration_values(
@@ -119,7 +118,8 @@ if __name__ == "__main__":
     for i in range(NUM_MOTORS):
         simulators.append(SensorSimulator(sensor_id=f"edge-{i + 1:03d}"))
 
-    mqtt_client = MQTTClient()
+    mqtt_client = MQTTHandler(env="local")
+    mqtt_client.connect("readings", lambda c, m: None)
 
     # 2. Calcule o novo intervalo
     # Se NUM_MOTORS = 3, queremos 3 eventos/s
@@ -158,20 +158,8 @@ if __name__ == "__main__":
                 "temperature": event["temperature"]
             }) + '\n')
 
-        mqtt_client.send(event_to_json(event))
+        mqtt_client.publish("readings", event_to_json(event))
 
         event_counter += 1
 
-        # 5. Use a sua lógica de sleep, mas com o novo INTERVAL
-        # Isso garante que o loop tente rodar a cada 0.333s (para 3 motores)
         sleep(INTERVAL - ((monotonic() - starttime) % INTERVAL))
-
-
-# sql_client = PostgreSQLHandler()
-#
-# sql_client.insert_one("events", {
-#     "event_id": event["event_id"],
-#     "sensor_id": event["sensor_id"],
-#     "timestamp": event["timestamp"],
-#     "payload": f'{{"temperature": {event["temperature"]}}}'
-# })
