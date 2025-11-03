@@ -1,0 +1,12 @@
+{"timestamp": "2025-11-03T19:03:01.791151", "event_id": "31fc1875-ddc2-4bf8-b302-bd85059f248d", "sensor_id": "edge-001", "temperature": 40.8}
+{"timestamp": "2025-11-03T19:03:48.001304", "event_id": "04b0302a-405f-4124-9dcc-bcae828f3da3", "sensor_id": "edge-001", "temperature": 39.2}
+{"timestamp": "2025-11-03T19:03:48.251352", "event_id": "8c047c8d-6c41-4677-9285-257422a21119", "sensor_id": "edge-002", "temperature": 39.4}
+{"timestamp": "2025-11-03T19:03:48.501360", "event_id": "c6ec2ebe-51fa-45d5-b922-398fdf23ed5c", "sensor_id": "edge-003", "temperature": 40.4}
+{"timestamp": "2025-11-03T19:03:48.751598", "event_id": "b53e6831-cff7-4a96-9159-889049bcffb5", "sensor_id": "edge-004", "temperature": 39.3}
+{"timestamp": "2025-11-03T19:03:49.002023", "event_id": "0c0eefd2-1353-4c6e-bb3a-8c7860e7f5c0", "sensor_id": "edge-001", "temperature": 40.4}
+{"timestamp": "2025-11-03T19:03:49.252013", "event_id": "c8bef447-915d-4914-a7d0-5a661782b06a", "sensor_id": "edge-002", "temperature": 39.6}
+{"timestamp": "2025-11-03T19:03:49.501342", "event_id": "4c802c6c-f3a6-4d97-a50f-d9291be024a9", "sensor_id": "edge-003", "temperature": 40.7}
+{"timestamp": "2025-11-03T19:03:49.751346", "event_id": "120bef1d-cef2-469a-b14f-222ad9ab6b4d", "sensor_id": "edge-004", "temperature": 39.1}
+{"timestamp": "2025-11-03T19:03:50.001461", "event_id": "2af1e155-3647-4bc8-b0e6-f902fb1d636a", "sensor_id": "edge-001", "temperature": 41.0}
+{"timestamp": "2025-11-03T19:03:50.251338", "event_id": "3559c241-1172-4c80-86cb-632352f72c65", "sensor_id": "edge-002", "temperature": 40.4}
+{"timestamp": "2025-11-03T19:03:50.501334", "event_id": "ae8c062c-5da2-40a1-86ae-e1fa423a7626", "sensor_id": "edge-003", "temperature": 39.5}
