@@ -8,3 +8,4 @@ postgres-data/
 *.jsonl
 *.csv
 experiments/hot_path/logs/*
+root.pem

@@ -38,28 +38,28 @@ services:
     volumes:
       - influxdb_data:/var/lib/influxdb2
 
-  telegraf:
-    image: telegraf:1.30
-    container_name: telegraf
-    hostname: telegraf
-    restart: unless-stopped
-    group_add:
-      - 1001 # docker group
-    env_file:
-      - .env
-    environment:
-      - INFLUX_URL=${CLOUD_INFLUX_URL}
-      - INFLUX_TOKEN=${CLOUD_INFLUX_TOKEN}
-      - INFLUX_ORG=${CLOUD_INFLUX_ORG}
-      - INFLUX_BUCKET=${CLOUD_INFLUX_BUCKET}
-      - HIVEMQ_USER=${MQTT_USERNAME}
-      - HIVEMQ_PASS=${MQTT_PASSWORD}
-    volumes:
-      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - influxdb
-    <<: *common-networks
+#  telegraf:
+#    image: telegraf:1.30
+#    container_name: telegraf
+#    hostname: telegraf
+#    restart: unless-stopped
+#    group_add:
+#      - 1001 # docker group
+#    env_file:
+#      - .env
+#    environment:
+#      - INFLUX_URL=${CLOUD_INFLUX_URL}
+#      - INFLUX_TOKEN=${CLOUD_INFLUX_TOKEN}
+#      - INFLUX_ORG=${CLOUD_INFLUX_ORG}
+#      - INFLUX_BUCKET=${CLOUD_INFLUX_BUCKET}
+#      - HIVEMQ_USER=${MQTT_USERNAME}
+#      - HIVEMQ_PASS=${MQTT_PASSWORD}
+#    volumes:
+#      - ./config/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#    depends_on:
+#      - influxdb
+#    <<: *common-networks
 
   datagen:
     container_name: datagen
